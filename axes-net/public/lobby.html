@@ -159,6 +159,7 @@
       </div>
     </div>
     <button class="btn ghost sm" id="btnRename" style="align-self:center;margin-top:4px">İsmi değiştir</button>
+    <button class="btn" id="btnPlay" style="display:none;margin-top:4px">Oyuna Geç ▶</button>
   </section>
 
   <!-- ===== 3) ODA ===== -->
@@ -492,6 +493,9 @@
     screen('scrLogin');
   };
 
+  // Sadece oyunun icindeki WebView'de gorunur (axesHost koprusu varsa).
+  $('btnPlay').onclick = () => { try { window.axesHost.close(); } catch (e) {} };
+
   $('tileCreate').onclick = () => { fillCreate(); sheet('sheetCreate', true); };
   $('tileJoin').onclick = () => { $('inCode').value = ''; sheet('sheetJoin', true); };
   $('tileFriends').onclick = () => sheet('sheetFriends', true);
@@ -540,6 +544,10 @@
 
   /* ---------- açılış ---------- */
   (function init(){
+    // Oyunun icindeki WebView'de acildiysa "Oyuna Gec" butonu gorunur olsun.
+    if (window.axesHost && typeof window.axesHost.close === 'function') {
+      $('btnPlay').style.display = '';
+    }
     if (LS.name){
       S.me.name = LS.name;
       $('inName').value = LS.name;
