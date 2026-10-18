@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>AXES-Net Lobi</title>
+<style>
+  :root{
+    --bg:#000;
+    --glass:rgba(255,255,255,.045);
+    --glass-hi:rgba(255,255,255,.08);
+    --line:rgba(255,255,255,.09);
+    --line-hi:rgba(255,255,255,.18);
+    --txt:#f2f3f7;
+    --dim:#8b8f9c;
+    --a1:#7c5cff;
+    --a2:#22d3ee;
+    --ok:#34d399;
+    --warn:#fbbf24;
+    --err:#fb7185;
+    --grad:linear-gradient(135deg,var(--a1),var(--a2));
+    --r:20px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+    overflow-x:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(60% 45% at 12% 0%,rgba(124,92,255,.20),transparent 60%),
+      radial-gradient(55% 40% at 92% 8%,rgba(34,211,238,.14),transparent 62%),
+      radial-gradient(70% 50% at 50% 105%,rgba(124,92,255,.10),transparent 60%);
+  }
+  .wrap{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:22px 16px 40px;min-height:100vh;display:flex;flex-direction:column}
+
+  /* ---------- üst bar ---------- */
+  .top{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+  .brand{font-weight:800;font-size:19px;letter-spacing:-.5px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .spacer{flex:1}
+  .pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim);background:var(--glass);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--err);box-shadow:0 0 0 3px rgba(251,113,133,.14)}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(52,211,153,.16)}
+
+  /* ---------- kartlar ---------- */
+  .card{background:var(--glass);border:1px solid var(--line);border-radius:var(--r);padding:16px;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+  .card + .card{margin-top:12px}
+  h2{margin:0 0 4px;font-size:22px;font-weight:750;letter-spacing:-.4px}
+  .sub{color:var(--dim);font-size:13px;margin:0 0 16px}
+
+  /* ---------- form ---------- */
+  input{
+    width:100%;padding:14px 16px;border-radius:14px;font-size:16px;font-family:inherit;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--txt);outline:none;
+    transition:border-color .18s,background .18s;
+  }
+  input:focus{border-color:rgba(124,92,255,.75);background:rgba(255,255,255,.07)}
+  input::placeholder{color:#5d616e}
+  .code-in{text-transform:uppercase;letter-spacing:5px;text-align:center;font-weight:700;font-size:20px}
+
+  /* ---------- butonlar ---------- */
+  button{font-family:inherit;font-size:15px;font-weight:650;border:0;border-radius:14px;cursor:pointer;transition:transform .12s,filter .18s,background .18s,border-color .18s;color:var(--txt)}
+  button:active{transform:scale(.975)}
+  button:disabled{opacity:.42;cursor:default;transform:none}
+  .btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:15px;background:var(--grad);color:#08080c;font-weight:750}
+  .btn.ghost{background:var(--glass);border:1px solid var(--line);color:var(--txt);font-weight:600}
+  .btn.ghost:hover{border-color:var(--line-hi);background:var(--glass-hi)}
+  .btn.sm{padding:10px 14px;width:auto;font-size:13.5px;border-radius:12px}
+  .row{display:flex;gap:10px}
+  .row > *{flex:1}
+  .stack{display:flex;flex-direction:column;gap:10px}
+
+  /* ---------- ana menü kutucukları ---------- */
+  .tile{display:flex;align-items:center;gap:14px;padding:16px;background:var(--glass);border:1px solid var(--line);border-radius:16px;cursor:pointer;transition:border-color .18s,background .18s,transform .12s}
+  .tile:active{transform:scale(.985)}
+  .tile:hover{border-color:var(--line-hi);background:var(--glass-hi)}
+  .ico{width:42px;height:42px;flex:0 0 42px;border-radius:13px;display:grid;place-items:center;font-size:19px;background:var(--grad);color:#08080c}
+  .ico.alt{background:rgba(34,211,238,.14);color:#67e8f9}
+  .ico.alt2{background:rgba(124,92,255,.16);color:#c4b5fd}
+  .tile b{display:block;font-size:15.5px;font-weight:700}
+  .tile span{display:block;color:var(--dim);font-size:12.5px;margin-top:1px}
+
+  /* ---------- oda kodu ---------- */
+  .codebox{text-align:center;padding:20px 16px;border-radius:18px;background:rgba(124,92,255,.08);border:1px dashed rgba(124,92,255,.45)}
+  .codebox .lbl{font-size:11.5px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+  .codebox .val{font-size:36px;font-weight:800;letter-spacing:9px;margin:8px 0 2px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  /* ---------- liste ---------- */
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;align-items:center;gap:11px;padding:11px 12px;background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:14px}
+  .av{width:36px;height:36px;flex:0 0 36px;border-radius:11px;display:grid;place-items:center;font-weight:750;font-size:14px;background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .item .nm{flex:1;min-width:0}
+  .item .nm b{display:block;font-size:14.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item .nm span{font-size:11.5px;color:var(--dim)}
+  .tag{font-size:10.5px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .tag.a{color:#a5b4fc;border-color:rgba(165,180,252,.35);background:rgba(99,102,241,.12)}
+  .tag.b{color:#fda4af;border-color:rgba(253,164,175,.35);background:rgba(244,63,94,.12)}
+  .tag.on{color:var(--ok);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.10)}
+  .empty{color:var(--dim);font-size:13px;text-align:center;padding:18px 0}
+
+  /* ---------- ekran/pencere ---------- */
+  .screen{display:none;flex:1}
+  .screen.active{display:flex;flex-direction:column;gap:12px;animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .sheet{position:fixed;inset:auto 0 0 0;z-index:40;background:#0a0a0f;border-top:1px solid var(--line);border-radius:24px 24px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:86vh;overflow-y:auto;transform:translateY(102%);transition:transform .3s cubic-bezier(.32,.72,0,1);box-shadow:0 -18px 50px rgba(0,0,0,.6)}
+  .sheet.open{transform:none}
+  .veil{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(3px);z-index:35;opacity:0;pointer-events:none;transition:opacity .3s}
+  .veil.open{opacity:1;pointer-events:auto}
+  .sheet h3{margin:0 0 14px;font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
+  .sheet h3 .spacer{flex:1}
+  .x{background:none;border:0;color:var(--dim);font-size:22px;padding:0 4px;line-height:1}
+
+  /* ---------- toast ---------- */
+  .toasts{position:fixed;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;z-index:60;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+  .toast{pointer-events:auto;background:rgba(18,18,24,.94);border:1px solid var(--line-hi);border-radius:16px;padding:13px 14px;backdrop-filter:blur(20px);box-shadow:0 12px 34px rgba(0,0,0,.55);animation:drop .3s cubic-bezier(.32,.72,0,1)}
+  .toast b{display:block;font-size:14px;margin-bottom:2px}
+  .toast p{margin:0;font-size:12.5px;color:var(--dim)}
+  .toast .acts{display:flex;gap:8px;margin-top:10px}
+  @keyframes drop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="toasts" id="toasts"></div>
+<div class="veil" id="veil"></div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="brand">AXES-NET</div>
+    <div class="spacer"></div>
+    <div class="pill"><i class="dot" id="conn"></i><span id="connTxt">bağlanıyor</span></div>
+  </div>
+
+  <!-- ===== 1) İSİM ===== -->
+  <section class="screen active" id="scrLogin">
+    <div class="card" style="margin-top:26px">
+      <h2>Hoş geldin</h2>
+      <p class="sub">Sadece bir isim yeter. Şifre yok, kayıt yok.</p>
+      <div class="stack">
+        <input id="inName" maxlength="16" placeholder="Oyuncu adın" autocomplete="off" spellcheck="false">
+        <button class="btn" id="btnLogin">Giriş Yap</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2) ANA MENÜ ===== -->
+  <section class="screen" id="scrMenu">
+    <div class="card">
+      <h2 id="hiName">Merhaba</h2>
+      <p class="sub" style="margin-bottom:14px">Ne yapmak istersin?</p>
+      <div class="stack">
+        <div class="tile" id="tileCreate"><div class="ico">◎</div><div><b>Oda Kur</b><span>Kod üret, arkadaşlarını davet et</span></div></div>
+        <div class="tile" id="tileJoin"><div class="ico alt">⌨</div><div><b>Koda Katıl</b><span>Arkadaşının oda kodunu gir</span></div></div>
+        <div class="tile" id="tileFriends"><div class="ico alt2">♣</div><div><b>Arkadaşlar</b><span>Ekle, davet et, odasına gir</span></div></div>
+      </div>
+    </div>
+    <button class="btn ghost sm" id="btnRename" style="align-self:center;margin-top:4px">İsmi değiştir</button>
+  </section>
+
+  <!-- ===== 3) ODA ===== -->
+  <section class="screen" id="scrRoom">
+    <div class="card">
+      <div class="codebox">
+        <div class="lbl">Oda Kodu</div>
+        <div class="val" id="roomCode">------</div>
+        <button class="btn ghost sm" id="btnCopy" style="margin-top:8px">Kodu kopyala</button>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn ghost" id="btnRoomInvite">Davet Et</button>
+        <button class="btn ghost" id="btnReady">Hazır</button>
+      </div>
+      <button class="btn" id="btnStart" style="margin-top:10px">Maçı Başlat</button>
+      <button class="btn ghost" id="btnLeave" style="margin-top:10px">Odadan Ayrıl</button>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 10px;font-size:15px">Oyuncular <span class="tag" id="roomMode">takım</span></h3>
+      <div class="list" id="roomPlayers"></div>
+    </div>
+  </section>
+</div>
+
+<!-- ===== pencere: koda katıl ===== -->
+<div class="sheet" id="sheetJoin">
+  <h3>Koda Katıl <span class="spacer"></span><button class="x" data-close>×</button></h3>
+  <div class="stack">
+    <input class="code-in" id="inCode" maxlength="6" placeholder="ABC123" autocomplete="off" spellcheck="false">
+    <button class="btn" id="btnJoinCode">Katıl</button>
+  </div>
+</div>
+
+<!-- ===== pencere: oda kur ===== -->
+<div class="sheet" id="sheetCreate">
+  <h3>Oda Kur <span class="spacer"></span><button class="x" data-close>×</button></h3>
+  <div class="stack">
+    <div>
+      <div class="sub" style="margin:0 0 8px">Mod</div>
+      <div class="row">
+        <button class="btn ghost" id="mdTeam" data-mode="team">Takım</button>
+        <button class="btn ghost" id="mdFfa" data-mode="ffa">Herkes Tek</button>
+      </div>
+    </div>
+    <div>
+      <div class="sub" style="margin:0 0 8px">Oyuncu sayısı</div>
+      <div class="row">
+        <button class="btn ghost" id="mp2" data-max="2">2</button>
+        <button class="btn ghost" id="mp4" data-max="4">4</button>
+        <button class="btn ghost" id="mp8" data-max="8">8</button>
+      </div>
+    </div>
+    <button class="btn" id="btnCreateGo">Odayı Oluştur</button>
+  </div>
+</div>
+
+<!-- ===== pencere: arkadaşlar ===== -->
+<div class="sheet" id="sheetFriends">
+  <h3>Arkadaşlar <span class="spacer"></span><button class="x" data-close>×</button></h3>
+  <div class="stack">
+    <div class="row">
+      <input id="inFriend" placeholder="Arkadaşının adı" autocomplete="off" spellcheck="false">
+      <button class="btn sm" id="btnAddFriend" style="flex:0 0 auto">Ekle</button>
+    </div>
+    <div class="list" id="friendList"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const WS = (() => {
+    if (location.protocol === 'https:') return 'wss://' + location.host;
+    if (location.protocol === 'http:')  return 'ws://'  + location.host;
+    return 'wss://axes-net.onrender.com';          // file:// ile yerel test
+  })();
+
+  /* ---------- kalıcı kimlik (isim yeter, uid cihazda saklanır) ---------- */
+  const LS = {
+    get uid(){ return localStorage.getItem('axes_uid'); },
+    set uid(v){ localStorage.setItem('axes_uid', v); },
+    get name(){ return localStorage.getItem('axes_name') || ''; },
+    set name(v){ localStorage.setItem('axes_name', v); },
+  };
+  if (!LS.uid) LS.uid = 'u' + Math.random().toString(36).slice(2, 10);
+
+  const S = {
+    ws: null, connected: false, retry: 0,
+    me: { uid: LS.uid, name: LS.name },
+    friends: [], room: null, players: [], hostId: -1, ready: false,
+    myTeam: null, mode: 'team', maxPlayers: 4,
+    createOpts: { mode: 'team', maxPlayers: 4 },
+  };
+
+  /* ---------- yardımcılar ---------- */
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const initial = s => (String(s || '?').trim()[0] || '?').toUpperCase();
+  const toUpperCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+
+  function screen(id){
+    document.querySelectorAll('.screen').forEach(el => el.classList.toggle('active', el.id === id));
+  }
+  function sheet(id, open){
+    $(id).classList.toggle('open', open);
+    $('veil').classList.toggle('open', open);
+  }
+  function closeSheets(){ document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open')); $('veil').classList.remove('open'); }
+
+  function toast(title, text, actions){
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<b>${esc(title)}</b>${text ? `<p>${esc(text)}</p>` : ''}`;
+    if (actions && actions.length){
+      const box = document.createElement('div'); box.className = 'acts';
+      actions.forEach(a => {
+        const b = document.createElement('button');
+        b.className = 'btn sm' + (a.ghost ? ' ghost' : '');
+        b.textContent = a.label; b.onclick = () => { a.run(); el.remove(); };
+        box.appendChild(b);
+      });
+      el.appendChild(box);
+    } else {
+      setTimeout(() => el.remove(), 3800);
+    }
+    $('toasts').appendChild(el);
+    return el;
+  }
+
+  /* ---------- bağlantı ---------- */
+  function setConn(on, txt){
+    S.connected = on;
+    $('conn').classList.toggle('on', on);
+    $('connTxt').textContent = txt || (on ? 'bağlı' : 'bağlanıyor');
+  }
+
+  function connect(){
+    if (S.ws && (S.ws.readyState === 0 || S.ws.readyState === 1)) return;
+    setConn(false, 'bağlanıyor');
+    let ws;
+    try { ws = new WebSocket(WS); } catch { return retryLater(); }
+    S.ws = ws;
+
+    ws.onopen = () => {
+      S.retry = 0;
+      setConn(true);
+      if (S.me.name) send({ t: 'hello', uid: S.me.uid, name: S.me.name });
+    };
+    ws.onmessage = ev => {
+      if (typeof ev.data !== 'string') return;             // binary snapshot — lobi ilgilenmez
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      handle(m);
+    };
+    ws.onclose = () => { setConn(false, 'koptu'); retryLater(); };
+    ws.onerror = () => {};
+  }
+
+  function retryLater(){
+    S.retry = Math.min(S.retry + 1, 6);
+    setTimeout(connect, 500 * S.retry);
+  }
+
+  function send(obj){
+    if (S.ws && S.ws.readyState === 1) { S.ws.send(JSON.stringify(obj)); return true; }
+    toast('Bağlantı yok', 'Sunucuya ulaşılamıyor, tekrar deniyorum.');
+    connect();
+    return false;
+  }
+
+  /* ---------- sunucu olayları ---------- */
+  function handle(m){
+    switch (m.t){
+      case 'pong': return;
+
+      case 'hello_ok':
+        S.me.uid = m.uid; S.me.name = m.name; LS.uid = m.uid; LS.name = m.name;
+        S.friends = m.friends || [];
+        $('hiName').textContent = 'Merhaba, ' + m.name;
+        renderFriends();
+        if (!S.room) screen('scrMenu');
+        return;
+
+      case 'friend_list':
+        S.friends = m.friends || [];
+        renderFriends();
+        return;
+
+      case 'friend_status': {
+        const f = S.friends.find(x => x.uid === m.uid);
+        if (f){ f.online = m.online; f.code = m.code; f.name = m.name || f.name; renderFriends(); }
+        return;
+      }
+
+      case 'invited': {
+        const el = toast(m.from + ' seni davet etti', 'Oda: ' + m.code, [
+          { label: 'Katıl', run: () => joinRoom(m.code) },
+          { label: 'Sonra', ghost: true, run: () => {} },
+        ]);
+        setTimeout(() => el.remove(), 20000);
+        return;
+      }
+
+      case 'invite_sent': toast('Davet gönderildi', 'Oda kodu: ' + m.code); return;
+      case 'friend_room': joinRoom(m.code); return;
+
+      case 'joined':
+        S.room = m.code; S.hostId = m.hostId; S.players = m.players || [];
+        S.mode = m.mode || 'team'; S.ready = false;
+        $('roomCode').textContent = m.code;
+        $('roomMode').textContent = S.mode === 'ffa' ? 'herkes tek' : 'takım';
+        screen('scrRoom'); renderRoom();
+        closeSheets();
+        toast('Odadasın', 'Kod: ' + m.code + ' — arkadaşlarını davet et.');
+        return;
+
+      case 'player_join': case 'player_leave':
+        toast(m.t === 'player_join' ? (m.name + ' katıldı') : 'Bir oyuncu ayrıldı', '');
+        return;
+
+      case 'teams':
+        S.players = m.players || [];
+        S.players.forEach(p => { if (p.netId === myNetId()) S.ready = p.ready; });
+        renderRoom();
+        return;
+
+      case 'mode':
+        S.mode = m.mode;
+        $('roomMode').textContent = S.mode === 'ffa' ? 'herkes tek' : 'takım';
+        return;
+
+      case 'started': toast('Maç başladı', 'İyi eğlenceler!'); return;
+
+      case 'error': toast('Hata', m.msg || 'bilinmeyen'); return;
+    }
+  }
+
+  const myNetId = () => {
+    const p = S.players.find(x => x.name === S.me.name);
+    return p ? p.netId : -1;
+  };
+
+  /* ---------- oda işlemleri ---------- */
+  function createRoom(){
+    if (S.room) return toast('Zaten odadasın', 'Önce odadan ayrıl.');
+    send({ t: 'create', name: S.me.name, mode: S.createOpts.mode, maxPlayers: S.createOpts.maxPlayers, team: 'a' });
+  }
+  function joinRoom(code){
+    code = toUpperCode(code);
+    if (!code) return;
+    if (S.room){                                   // önce mevcut odadan çık
+      send({ t: 'leave' });
+      S.room = null;
+      setTimeout(() => send({ t: 'join', code, name: S.me.name }), 160);
+      return;
+    }
+    send({ t: 'join', code, name: S.me.name });
+  }
+  function leaveRoom(){
+    send({ t: 'leave' });
+    S.room = null; S.players = []; S.hostId = -1; S.ready = false;
+    screen('scrMenu');
+    toast('Odadan ayrıldın', '');
+  }
+
+  /* ---------- render ---------- */
+  function renderFriends(){
+    const box = $('friendList');
+    if (!S.friends.length){ box.innerHTML = '<div class="empty">Henüz arkadaş yok.<br>Yukarıdan isim yazarak ekle.</div>'; return; }
+    box.innerHTML = '';
+    S.friends.forEach(f => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML =
+        `<div class="av">${esc(initial(f.name))}</div>
+         <div class="nm"><b>${esc(f.name)}</b>
+           <span>${f.online ? (f.code ? 'odada · ' + esc(f.code) : 'çevrimiçi') : 'çevrimdışı'}</span></div>
+         ${f.online ? '<span class="tag on">canlı</span>' : '<span class="tag">kapalı</span>'}`;
+      const acts = document.createElement('div');
+      acts.style.cssText = 'display:flex;gap:6px;flex:0 0 auto';
+      const bInv = document.createElement('button');
+      bInv.className = 'btn sm ghost'; bInv.textContent = 'Davet';
+      bInv.onclick = () => {
+        if (!S.room) { toast('Önce oda kur', 'Davet için odada olmalısın.'); closeSheets(); $('tileCreate').click(); return; }
+        send({ t: 'invite', uid: f.uid });
+      };
+      const bGo = document.createElement('button');
+      bGo.className = 'btn sm'; bGo.textContent = 'Git';
+      bGo.disabled = !(f.online && f.code);
+      bGo.onclick = () => { closeSheets(); joinRoom(f.code); };
+      acts.append(bInv, bGo);
+      el.appendChild(acts);
+      box.appendChild(el);
+    });
+  }
+
+  function renderRoom(){
+    const box = $('roomPlayers');
+    if (!S.players.length){ box.innerHTML = '<div class="empty">Kimse yok — Davet Et ile arkadaşını çağır.</div>'; }
+    else {
+      box.innerHTML = '';
+      S.players.forEach(p => {
+        const isMe = p.name === S.me.name;
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML =
+          `<div class="av">${esc(initial(p.name))}</div>
+           <div class="nm"><b>${esc(p.name)}${isMe ? ' (sen)' : ''}</b>
+             <span>${p.ready ? 'hazır' : 'bekliyor'}${p.netId === S.hostId ? ' · kurucu' : ''}</span></div>
+           <span class="tag ${p.team === 0 ? 'a' : 'b'}">${S.mode === 'ffa' ? 'FFA' : (p.team === 0 ? 'A' : 'B')}</span>`;
+        box.appendChild(el);
+      });
+    }
+    const isHost = myNetId() === S.hostId && S.hostId > 0;
+    $('btnStart').style.display = isHost ? '' : 'none';
+    $('btnReady').textContent = S.ready ? 'Hazır ✓' : 'Hazır';
+  }
+
+  /* ---------- olay bağlama ---------- */
+  $('btnLogin').onclick = () => {
+    const n = $('inName').value.trim();
+    if (n.length < 2) return toast('İsim çok kısa', 'En az 2 karakter gir.');
+    S.me.name = n; LS.name = n;
+    if (!S.connected){ connect(); } else { send({ t: 'hello', uid: S.me.uid, name: n }); }
+    $('hiName').textContent = 'Merhaba, ' + n;
+  };
+  $('inName').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnLogin').click(); });
+
+  $('btnRename').onclick = () => {
+    $('inName').value = LS.name;
+    screen('scrLogin');
+  };
+
+  $('tileCreate').onclick = () => { fillCreate(); sheet('sheetCreate', true); };
+  $('tileJoin').onclick = () => { $('inCode').value = ''; sheet('sheetJoin', true); };
+  $('tileFriends').onclick = () => sheet('sheetFriends', true);
+  $('btnRoomInvite').onclick = () => sheet('sheetFriends', true);
+
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheets);
+  $('veil').onclick = closeSheets;
+
+  $('btnJoinCode').onclick = () => { const c = toUpperCode($('inCode').value); closeSheets(); joinRoom(c); };
+  $('inCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnJoinCode').click(); });
+
+  function mark(sel, on){
+    document.querySelectorAll(sel).forEach(b => {
+      b.classList.toggle('btn', on(b.dataset));
+      b.classList.toggle('ghost', !on(b.dataset));
+    });
+  }
+  function fillCreate(){
+    mark('[data-mode]', d => d.mode === S.createOpts.mode);
+    mark('[data-max]',  d => +d.max === S.createOpts.maxPlayers);
+  }
+  $('mdTeam').onclick = () => { S.createOpts.mode = 'team'; fillCreate(); };
+  $('mdFfa').onclick  = () => { S.createOpts.mode = 'ffa';  fillCreate(); };
+  $('mp2').onclick = () => { S.createOpts.maxPlayers = 2; fillCreate(); };
+  $('mp4').onclick = () => { S.createOpts.maxPlayers = 4; fillCreate(); };
+  $('mp8').onclick = () => { S.createOpts.maxPlayers = 8; fillCreate(); };
+  $('btnCreateGo').onclick = () => { closeSheets(); createRoom(); };
+
+  $('btnAddFriend').onclick = () => {
+    const n = $('inFriend').value.trim();
+    if (n.length < 2) return toast('İsim çok kısa', '');
+    send({ t: 'friend_add', name: n });
+    $('inFriend').value = '';
+    toast('İstek gönderildi', n + ' listene ekleniyor (karşılıklı).');
+  };
+  $('inFriend').addEventListener('keydown', e => { if (e.key === 'Enter') $('btnAddFriend').click(); });
+
+  $('btnCopy').onclick = async () => {
+    const code = S.room || '';
+    try { await navigator.clipboard.writeText(code); toast('Kopyalandı', code); }
+    catch { $('roomCode').textContent = code; toast('Kod', code + ' — elle yazabilirsin.'); }
+  };
+  $('btnReady').onclick = () => { S.ready = !S.ready; send({ t: 'ready', ready: S.ready }); renderRoom(); };
+  $('btnStart').onclick = () => send({ t: 'start' });
+  $('btnLeave').onclick = leaveRoom;
+
+  /* ---------- açılış ---------- */
+  (function init(){
+    if (LS.name){
+      S.me.name = LS.name;
+      $('inName').value = LS.name;
+      $('hiName').textContent = 'Merhaba, ' + LS.name;
+      screen('scrMenu');
+      connect();
+    } else {
+      connect();                     // bağlantıyı arka planda kur
+      screen('scrLogin');
+    }
+    setInterval(() => { if (S.connected) send({ t: 'ping' }); }, 25000);
+  })();
+})();
+</script>
+</body>
+</html>

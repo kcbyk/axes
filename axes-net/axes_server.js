@@ -417,8 +417,25 @@ function markRoom(ws, code, netId) {
 /* HTTP + WebSocket ayni portta.
  * Render gibi bulut platformlari servisi "ayakta mi" diye HTTP ile yoklar;
  * WebSocket yukseltmesi de ayni port uzerinden yapilir.
- * Ayrica /saglik ve / uclari durum metni dondurur. */
+ *  /        -> saglik metni (Render healthCheckPath)
+ *  /lobby   -> telefondan acilan lobi arayuzu (public/lobby.html)
+ */
+const PUBLIC_DIR = path.join(__dirname, 'public');
+
+function serveLobby(res) {
+  fs.readFile(path.join(PUBLIC_DIR, 'lobby.html'), (err, buf) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('lobby.html bulunamadi');
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(buf);
+  });
+}
+
 const httpServer = http.createServer((req, res) => {
+  const url = (req.url || '/').split('?')[0];
+  if (url === '/lobby' || url === '/oyna') return serveLobby(res);
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end(`axes-net ok  |  oda: ${rooms.size}  |  hesap: ${accounts.size}\n`);
 });
@@ -475,6 +492,15 @@ wss.on('connection', ws => {
         byWs.set(ws, { room, netId: p.netId });
         markRoom(ws, room.code, p.netId);
         console.log(`[oda] ${room.code} <- ${p.name} (#${p.netId})`);
+        break;
+      }
+      case 'leave': {                                 // odadan ayril (baglanti acik kalir)
+        if (!ctx) return;
+        byWs.delete(ws);
+        ctx.room.leave(ctx.netId);
+        const acc = accounts.get(uidByWs.get(ws));
+        if (acc) { acc.code = null; acc.netId = -1; notifyFriends(acc.uid, { t: 'friend_status', uid: acc.uid, name: acc.name, online: true, code: null }); }
+        ws.send(JSON.stringify({ t: 'left' }));
         break;
       }
       case 'ready': {
