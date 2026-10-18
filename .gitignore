@@ -1,0 +1,12 @@
+# Bu depo yalnizca sunucu deploy'u icin kullanilir.
+# Root'taki agir her sey (build/, inspect/, work/, tools/, .xapk ...) disarida kalir.
+/*
+!/axes-net/
+!/render.yaml
+!/.gitignore
+
+# axes-net icinde deploy'a girmeyecekler
+axes-net/node_modules/
+axes-net/friends.json
+axes-net/uid.json
+axes-net/.env

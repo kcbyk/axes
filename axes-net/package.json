@@ -1,0 +1,24 @@
+{
+  "name": "axes-net",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Axes.io netcode PoC - oda/davet sunucusu + Frida koprusu",
+  "main": "axes_server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node axes_server.js",
+    "server": "node axes_server.js",
+    "bridge": "node axes_bridge.js",
+    "sim": "node sim_client.js",
+    "sim:host": "node sim_client.js --create --name Ali --team a --walk",
+    "sim:join": "node sim_client.js --name Veli --team a --walk"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "frida": "^16.5.0"
+  }
+}

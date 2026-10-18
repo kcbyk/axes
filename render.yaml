@@ -1,0 +1,14 @@
+# Render Blueprint — AXES.io arkadas/oda sunucusu
+# Render bu dosyayi depo kokunde arar; kod axes-net/ altinda oldugu icin rootDir verildi.
+services:
+  - type: web
+    name: axes-net
+    runtime: node
+    plan: free
+    rootDir: axes-net
+    buildCommand: npm install --omit=optional   # frida yalnizca yerel kopru icin gerekli
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
