@@ -12,3 +12,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20"
+      # Kalici arkadas listesi icin Redis (Upstash vb.).
+      # Deger panelden girilir; bos birakilirsa yerel friends.json'a yazilir.
+      - key: REDIS_URL
+        sync: false

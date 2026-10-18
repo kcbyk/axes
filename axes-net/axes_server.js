@@ -285,30 +285,75 @@ function findRoom(code) {
 
 /* ---------------- arkadas sistemi ----------------
  * Kalici kimlik: istemci kendi uid'sini uretir (cihazda saklanir) ve
- * baglaninca "hello" ile bildirir. Arkadas iliskileri friends.json'da tutulur.
+ * baglaninca "hello" ile bildirir. Arkadas iliskileri kalici olarak tutulur:
+ * REDIS_URL tanimliysa Redis'te, degilse yerel friends.json'da.
  * PoC oldugu icin arkadaslik karsilikli ve otomatik kabul edilir.
  */
 const STORE_FILE = path.join(__dirname, 'friends.json');
+const REDIS_KEY  = 'axes:accounts';
 const accounts   = new Map();   // uid -> { uid, name, friends:Set<uid>, ws, code, netId }
 const uidByWs    = new Map();   // ws  -> uid
 
-function loadStore() {
+let redis = null;               // REDIS_URL verilirse dolu olur
+
+/* Kalici depo: REDIS_URL varsa Redis (Upstash vb.), yoksa yerel friends.json.
+ * Render'in ucretsiz diski gecici oldugu icin kalicilik Redis ile saglanir. */
+function loadStoreFile() {
   try {
     const raw = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
-    for (const [uid, a] of Object.entries(raw)) {
-      accounts.set(uid, {
-        uid, name: a.name || uid,
-        friends: new Set(a.friends || []),
-        ws: null, code: null, netId: -1,
-      });
-    }
+    applyStore(raw);
     console.log(`[arkadas] ${accounts.size} hesap yuklendi (${STORE_FILE})`);
   } catch { /* ilk calistirma — kayit yok */ }
 }
 
-function saveStore() {
+function applyStore(raw) {
+  for (const [uid, a] of Object.entries(raw || {})) {
+    const old = accounts.get(uid);
+    accounts.set(uid, {
+      uid, name: a.name || uid,
+      friends: new Set(a.friends || []),
+      ws: old ? old.ws : null, code: old ? old.code : null, netId: old ? old.netId : -1,
+    });
+  }
+}
+
+function snapshot() {
   const out = {};
   for (const a of accounts.values()) out[a.uid] = { name: a.name, friends: [...a.friends] };
+  return out;
+}
+
+async function initStore() {
+  const url = process.env.REDIS_URL;
+  if (!url) { loadStoreFile(); return; }
+  try {
+    const { createClient } = require('redis');
+    const client = createClient({
+      url,
+      // Sinirli yeniden deneme: Redis yoksa acilista sonsuza kadar takilmasin.
+      socket: { reconnectStrategy: n => (n > 8 ? false : Math.min(n * 250, 2000)) },
+    });
+    client.on('error', e => console.error('[redis] ' + e.message));
+    await client.connect();
+    redis = client;
+    const raw = await client.get(REDIS_KEY);
+    if (raw) applyStore(JSON.parse(raw));
+    console.log(`[redis] bagli — ${accounts.size} hesap yuklendi`);
+  } catch (e) {
+    console.error('[redis] baglanamadi (' + e.message + ') — dosya moduna donuluyor');
+    try { if (redis) await redis.disconnect(); } catch { /* yoksay */ }
+    redis = null;
+    loadStoreFile();
+  }
+}
+
+async function persist() {
+  const out = snapshot();
+  if (redis) {
+    try { await redis.set(REDIS_KEY, JSON.stringify(out)); }
+    catch (e) { console.error('[redis] yazilamadi: ' + e.message); }
+    return;
+  }
   try { fs.writeFileSync(STORE_FILE, JSON.stringify(out, null, 2)); }
   catch (e) { console.error('[arkadas] kaydedilemedi: ' + e.message); }
 }
@@ -516,7 +561,7 @@ wss.on('connection', ws => {
         if (!f || f.uid === a.uid) return ws.send(JSON.stringify({ t: 'error', msg: 'Arkadas bulunamadi' }));
         a.friends.add(f.uid);
         f.friends.add(a.uid);                     // PoC: karsilikli otomatik kabul
-        saveStore();
+        persist();
         ws.send(JSON.stringify({ t: 'friend_list', friends: friendList(a.uid) }));
         sendUid(f.uid, { t: 'friend_list', friends: friendList(f.uid) });
         console.log(`[arkadas] ${a.name} <-> ${f.name}`);
@@ -530,7 +575,7 @@ wss.on('connection', ws => {
         if (!f) return ws.send(JSON.stringify({ t: 'error', msg: 'Arkadas bulunamadi' }));
         a.friends.delete(f.uid);
         f.friends.delete(a.uid);
-        saveStore();
+        persist();
         ws.send(JSON.stringify({ t: 'friend_list', friends: friendList(a.uid) }));
         sendUid(f.uid, { t: 'friend_list', friends: friendList(f.uid) });
         break;
@@ -602,6 +647,8 @@ setInterval(() => {
   for (const room of [...rooms.values()]) room.step(dt);
 }, TICK_MS);
 
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`[axes] sunucu hazir -> ws://0.0.0.0:${PORT}`);
+initStore().finally(() => {
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`[axes] sunucu hazir -> ws://0.0.0.0:${PORT}`);
+  });
 });
